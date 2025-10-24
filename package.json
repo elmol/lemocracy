@@ -5,7 +5,14 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "deploy": "npx hardhat run scripts/deploy.js --network sepolia",
+    "deploy-working": "npx hardhat run scripts/deployWorking.js --network sepolia",
+    "create-proposal": "node scripts/createProposal.js",
     "vote": "node scripts/vote.js",
+    "vote-advanced": "node scripts/voteAdvanced.js",
+    "vote-real-proof": "node scripts/voteWithRealProof.js",
+    "vote-working": "node scripts/voteWorking.js",
+    "identity": "node scripts/identity.js",
+    "demo": "node scripts/demo.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

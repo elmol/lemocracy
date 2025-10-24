@@ -22,37 +22,68 @@ async function main() {
   const voting = new ethers.Contract(
     votingAddress,
     [
-      "function castVote(uint256 groupId, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) proof) external",
+      "function castVote(uint256 _proposalId, bool _isYes, tuple(uint256 merkleTreeDepth, uint256 merkleTreeRoot, uint256 nullifier, uint256 message, uint256 scope, uint256[8] points) _proof) external",
+      "function getProposal(uint256 _proposalId) external view returns (uint256, string, string, address, uint256, uint256, bool)",
+      "function getProposalCount() external view returns (uint256)"
     ],
     wallet
   );
 
-  const identity = new Identity();
+  // Create deterministic identity by signing a consistent message with Ethereum account
+  const messageToSign = "Lemocracy Voting dApp - Semaphore Identity";
+  console.log("📝 Signing message for identity:", messageToSign);
+  
+  // Sign the message with the wallet
+  const signature = await wallet.signMessage(messageToSign);
+  console.log("✍️  Signature:", signature);
+  
+  // Create deterministic identity from the signature
+  const identity = new Identity(signature);
   const identityCommitment = identity.commitment;
-  console.log("Identity commitment:", identityCommitment.toString());
+  console.log("👤 Identity commitment:", identityCommitment.toString());
 
   // Create a group and add the identity commitment
   const group = new Group();
   group.addMember(identityCommitment);
   const root = group.root;
 
-  const groupId = 1;
-  const signal = "yes";
-  const message = ethers.utils.formatBytes32String(signal);
+  // Get proposal count and use the first proposal
+  const proposalCount = await voting.getProposalCount();
+  if (proposalCount.toNumber() === 0) {
+    console.log("❌ No proposals found. Please create a proposal first.");
+    return;
+  }
+  
+  const proposalId = 7; // Vote on the first proposal
+  const isYes = true; // Vote "yes"
+  
+  console.log("🗳️  Voting on proposal ID:", proposalId);
+  console.log("📊 Vote choice:", isYes ? "YES" : "NO");
+  
+  // Create a unique nullifier for this specific vote
+  const nullifier = ethers.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode(
+      ["uint256", "uint256", "address"],
+      [proposalId, identityCommitment, wallet.address]
+    )
+  );
+  
+  const message = ethers.utils.formatBytes32String(isYes ? "1" : "0");
 
   // Generate proof (API depends on semaphore version)
   // Replace with actual proof generation method from @semaphore-protocol/proof
   const proof = {
     merkleTreeDepth: 20,
     merkleTreeRoot: BigInt(root),
-    nullifier: BigInt(ethers.utils.keccak256(Buffer.from("dummy-nullifier"))),
+    nullifier: BigInt(nullifier),
     message: BigInt(message),
     scope: BigInt(ethers.utils.formatBytes32String("voting")),
     points: Array(8).fill(0) // placeholder
   };
 
   const tx = await voting.castVote(
-    groupId,
+    proposalId,
+    isYes,
     proof,
     { gasLimit: 1_000_000 }
   );
